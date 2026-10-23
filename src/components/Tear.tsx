@@ -1,112 +1,94 @@
-// рваный край бумаги между блоками; одна ломаная для заливки, маски и светлых волокон
-const JAG: [number, number][] = [
-  [0, 22],
-  [38, 30],
-  [70, 14],
-  [104, 26],
-  [140, 8],
-  [176, 24],
-  [214, 12],
-  [250, 28],
-  [286, 6],
-  [322, 22],
-  [360, 16],
-  [398, 30],
-  [432, 10],
-  [470, 24],
-  [508, 4],
-  [544, 20],
-  [582, 14],
-  [618, 30],
-  [656, 10],
-  [694, 26],
-  [730, 8],
-  [768, 22],
-  [806, 16],
-  [842, 30],
-  [880, 6],
-  [918, 24],
-  [954, 12],
-  [992, 28],
-  [1030, 10],
-  [1066, 22],
-  [1104, 4],
-  [1140, 20],
-  [1178, 14],
-  [1214, 28],
-  [1252, 8],
-  [1290, 24],
-  [1326, 16],
-  [1364, 30],
-  [1400, 12],
-  [1440, 24],
-];
-const line = (dy = 0) => JAG.map(([x, y]) => `${x} ${y + dy}`).join(' L');
+// рваный край бумаги: неровная кромка с волокнами, как будто лист надорвали руками
+const W = 1440;
+const VH = 100;
 
-// нижняя часть под линией: верх следующего блока
-const BELOW = `M${line()} L1440 40 L0 40 Z`;
-// верхняя часть над линией: маска для низа предыдущего блока
-const ABOVE = `M0 0 L1440 0 L${[...JAG]
-  .reverse()
-  .map(([x, y]) => `${x} ${y}`)
-  .join(' L')} Z`;
+// детерминированный шум, чтобы край был одинаковым при каждой сборке
+function rand(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return s / 2147483647;
+  };
+}
 
-export const TEAR_MASK = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 40' preserveAspectRatio='none'><path d='${ABOVE}'/></svg>`,
-)}")`;
+function edge(seed: number, base: number, amp: number, step: number, grain: number) {
+  const r = rand(seed);
+  const pts: [number, number][] = [];
+  const phase = r() * 10;
+  for (let x = 0; x <= W; x += step + r() * step) {
+    const wave = Math.sin(x / 210 + phase) * amp + Math.sin(x / 67 + phase * 2) * amp * 0.45;
+    pts.push([Math.min(x, W), base + wave + (r() - 0.5) * grain]);
+  }
+  pts.push([W, base]);
+  return pts;
+}
 
-const H = 'clamp(20px,2.8vw,40px)';
+const MAIN = edge(7, 62, 14, 5, 9);
+// светлый слой бумаги с волокнами чуть выше основной кромки
+const fr = rand(31);
+let drift = 8;
+const FIBRE = MAIN.map(([x, y]) => {
+  // ширина белого надрыва гуляет от 4 до 20px, с мелкими волокнами
+  drift = Math.min(20, Math.max(4, drift + (fr() - 0.5) * 5));
+  return [x, y - drift - fr() * 3] as [number, number];
+});
 
-// верх блока со сплошным фоном: рваная кромка его цвета наезжает на блок выше
-export function TearTop({ color, fibre = '#fffdf6' }: { color: string; fibre?: string }) {
+const poly = (pts: [number, number][]) =>
+  pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L');
+const below = (pts: [number, number][]) => `M0 ${VH} L${poly(pts)} L${W} ${VH} Z`;
+const above = (pts: [number, number][]) => `M0 0 L${W} 0 L${poly([...pts].reverse())} Z`;
+
+export const TEAR_H = 'clamp(44px,7vw,100px)';
+
+const svgUrl = (d: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${W} ${VH}' preserveAspectRatio='none'><path d='${d}'/></svg>`,
+  )}")`;
+
+// верх блока со сплошным фоном: рваная кромка его цвета с белым надрывом наезжает на блок выше
+export function TearTop({ color, fibre = '#fffaf0' }: { color: string; fibre?: string }) {
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-x-0 z-20"
-      style={{ top: `calc(${H} * -1 + 2px)`, height: H }}
+      style={{ top: `calc(${TEAR_H} * -1 + 2px)`, height: TEAR_H }}
     >
       <svg
-        viewBox="0 0 1440 40"
+        viewBox={`0 0 ${W} ${VH}`}
         preserveAspectRatio="none"
-        className="h-full w-full drop-shadow-[0_-5px_8px_rgb(0_0_0/0.35)]"
+        className="h-full w-full drop-shadow-[0_-8px_14px_rgb(0_0_0/0.4)]"
       >
-        <path d={`M${line(-3)} L1440 40 L0 40 Z`} fill={fibre} />
-        <path d={BELOW} fill={color} />
+        <path d={below(FIBRE)} fill={fibre} />
+        <path d={below(MAIN)} fill={color} />
       </svg>
     </div>
   );
 }
 
-// низ блока-картинки: сам блок обрезан маской, по кромке белые волокна бумаги
+// низ блока-картинки: сам блок обрезан по кромке, у самого края белый надрыв бумаги
+const MASK = svgUrl(above(MAIN));
 export const tearBottomStyle = {
-  WebkitMaskImage: `linear-gradient(#000 0 0), ${TEAR_MASK}`,
-  maskImage: `linear-gradient(#000 0 0), ${TEAR_MASK}`,
-  WebkitMaskSize: `100% calc(100% - ${H} + 1px), 100% ${H}`,
-  maskSize: `100% calc(100% - ${H} + 1px), 100% ${H}`,
+  WebkitMaskImage: `linear-gradient(#000 0 0), ${MASK}`,
+  maskImage: `linear-gradient(#000 0 0), ${MASK}`,
+  WebkitMaskSize: `100% calc(100% - ${TEAR_H} + 1px), 100% ${TEAR_H}`,
+  maskSize: `100% calc(100% - ${TEAR_H} + 1px), 100% ${TEAR_H}`,
   WebkitMaskPosition: 'top, bottom',
   maskPosition: 'top, bottom',
   WebkitMaskRepeat: 'no-repeat',
   maskRepeat: 'no-repeat',
 } as const;
 
+// белая полоса оторванной бумаги по нижней кромке картинки
 export function TearFibre() {
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
-      style={{ height: H }}
+      style={{ height: TEAR_H }}
     >
-      <svg viewBox="0 0 1440 40" preserveAspectRatio="none" className="h-full w-full">
-        <path
-          d={`M${line(-1.5)}`}
-          fill="none"
-          stroke="#fffdf6"
-          strokeWidth="3"
-          vectorEffect="non-scaling-stroke"
-        />
+      <svg viewBox={`0 0 ${W} ${VH}`} preserveAspectRatio="none" className="h-full w-full">
+        <path d={`M${poly(FIBRE)} L${poly([...MAIN].reverse())} Z`} fill="#fffaf0" />
       </svg>
     </div>
   );
 }
-
-export const TEAR_H = H;

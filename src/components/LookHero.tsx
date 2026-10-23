@@ -24,6 +24,8 @@ export function LookHero() {
     let drawn = -1;
     let touched = false;
     let raf = 0;
+    // с мышью Майло ждёт её движения и смотрит в камеру; сам оглядывается только на тач-экранах
+    const hasMouse = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
     const draw = (i: number) => {
       // кадр ещё не пришёл — берём ближайший готовый
@@ -52,8 +54,7 @@ export function LookHero() {
 
     const start = performance.now();
     const loop = (t: number) => {
-      // без мыши (телефон) Майло сам медленно оглядывается
-      if (!touched) target = lookAt(0.5 + 0.5 * Math.sin((t - start) / 1800));
+      if (!touched && !hasMouse) target = lookAt(0.5 + 0.5 * Math.sin((t - start) / 1800));
       current += (target - current) * 0.12;
       const i = Math.round(current);
       if (i !== drawn) draw(i);
@@ -92,6 +93,8 @@ export function LookHero() {
       />
       <canvas ref={canvas} aria-hidden className="absolute inset-0 h-full w-full" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-space/70 via-transparent to-space/60" />
+      {/* затемнение под текстом справа, чтобы читался поверх светлого гриба */}
+      <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(48%_60%_at_82%_78%,rgb(12_15_46/0.75),transparent)] md:block" />
 
       <div className="relative flex h-full flex-col items-center px-4 pt-[9svh] text-center">
         <motion.h1
@@ -112,19 +115,40 @@ export function LookHero() {
         </motion.p>
 
         {/* на десктопе справа, чтобы не закрывать Майло */}
-        <div className="mt-6 md:mt-auto md:self-end md:pb-[7svh] md:pr-[6vw] md:text-right">
-          <p className="title text-[clamp(15px,2vw,26px)] uppercase tracking-[0.12em] text-white/90">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+          className="mt-6 max-w-[520px] md:mt-auto md:self-end md:pb-[9svh] md:pr-[5vw] md:text-left"
+        >
+          <p className="title text-[clamp(14px,1.4vw,18px)] uppercase tracking-[0.14em] text-sky">
             A new animated series · Coming soon
           </p>
-          <a href="#crew" className="btn btn-slime pointer-events-auto mt-5">
-            Meet the crew ↓
-          </a>
-        </div>
+          <h2 className="title mt-3 hidden text-[clamp(34px,3.4vw,52px)] text-white md:block">
+            Somewhere out there, a door is open.
+          </h2>
+          <p className="mt-4 text-[clamp(15px,1.25vw,18px)] leading-relaxed text-white/90 [text-shadow:0_2px_12px_rgb(12_15_46/0.9)]">
+            Milo is ten and can’t sit still. One night he finds a little ship that flies between
+            worlds, and three friends just as curious as he is: Zoe, Bibo and Nova. Every episode a
+            new planet, and every planet a new problem only friends can solve.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+            <a href="#crew" className="btn btn-slime pointer-events-auto">
+              Meet the crew ↓
+            </a>
+            <a
+              href="#worlds"
+              className="title pointer-events-auto inline-flex min-h-12 items-center px-3 text-[19px] text-white underline decoration-sun decoration-[3px] underline-offset-[6px]"
+            >
+              See the worlds
+            </a>
+          </div>
+        </motion.div>
       </div>
 
       <motion.p
         animate={{ opacity: hint ? 1 : 0 }}
-        className="hand pointer-events-none absolute right-6 top-[42%] hidden max-w-[180px] rotate-[4deg] text-[22px] leading-tight text-white/85 md:block"
+        className="hand pointer-events-none absolute left-[46%] top-[50%] hidden max-w-[170px] rotate-[4deg] text-[22px] leading-tight text-white/85 md:block"
       >
         Move your mouse. Milo is watching ✦
       </motion.p>
