@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+/* мультяшная тема: ночной космос, кислотно-лаймовый логотип, кремовая бумага листов персонажей */
+@theme {
+  --font-display: var(--ff-display), 'Arial Rounded MT Bold', sans-serif;
+  --font-hand: var(--ff-hand), 'Comic Sans MS', cursive;
+  --font-sans: var(--ff-body), system-ui, sans-serif;
+
+  --color-space: #0c0f2e;
+  --color-space-2: #171a45;
+  --color-paper: #f6f1e3;
+  --color-paper-2: #ece4cf;
+  --color-ink: #13294a;
+  --color-ink-2: #4a5a73;
+  --color-slime: #b9f23f;
+  --color-slime-dark: #0f4a4e;
+  --color-sun: #ffd94a;
+  --color-pink: #ff5fa8;
+  --color-sky: #4fd3f5;
+  --color-tang: #ff9a3c;
+}
+
+@layer base {
+  html {
+    background: var(--color-space);
+    color: #fff;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  ::selection {
+    background: var(--color-slime);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  .wrap {
+    width: min(100% - 32px, 1240px);
+    margin-inline: auto;
+  }
+
+  /* логотип как на постере: лаймовые буквы с тёмной обводкой и объёмной тенью */
+  .logo {
+    font-family: var(--font-display);
+    color: var(--color-slime);
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+    -webkit-text-stroke: 0.06em var(--color-slime-dark);
+    paint-order: stroke fill;
+    text-shadow:
+      0 0.06em 0 var(--color-slime-dark),
+      0 0.1em 0.25em rgb(0 0 0 / 0.45);
+  }
+
+  .title {
+    font-family: var(--font-display);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+  }
+
+  .hand {
+    font-family: var(--font-hand);
+  }
+
+  /* мазок маркера под цитатой, как на листах персонажей */
+  .swash {
+    display: inline-block;
+    padding: 0.2em 0.7em 0.25em;
+    border-radius: 0.6em 0.3em 0.7em 0.35em;
+    transform: rotate(-2deg);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 48px;
+    padding: 0 26px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 19px;
+    letter-spacing: 0.02em;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: translateY(-2px) rotate(-1deg);
+  }
+  .btn-slime {
+    background: var(--color-slime);
+    color: var(--color-ink);
+    box-shadow: 0 4px 0 var(--color-slime-dark);
+  }
+}
